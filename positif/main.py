@@ -3,22 +3,22 @@ import glob
 import imageio.v3 as iio
 import rawpy
 from scipy.interpolate import splev, splrep
+import scipy.ndimage
 import numpy as np
 from positif.parser import parse_arguments
-from positif.parameters import ORDER, BPS, HISTOGRAM_THRESHOLD, HISTOGRAM_BORDER_HEIGHT, HISTOGRAM_BORDER_WIDTH
-from positif.parameters import TEMPERATURE_CORRECTIONS
+import positif.parameters as params
 
 DATA_TYPES = {8: np.uint8, 16: np.uint16}
 
 
 def mid_level(im,
-              threshold=HISTOGRAM_THRESHOLD,
-              border_h=HISTOGRAM_BORDER_HEIGHT,
-              border_w=HISTOGRAM_BORDER_WIDTH):
+              threshold=params.HISTOGRAM_THRESHOLD,
+              border_h=params.HISTOGRAM_BORDER_HEIGHT,
+              border_w=params.HISTOGRAM_BORDER_WIDTH):
     height, width, _ = im.shape
     bh = int(border_h * height)
     bw = int(border_w * width)
-    h, b = np.histogram(im[bh:-bh, bw:-bw, :].flatten(), bins=np.arange(2 ** BPS))
+    h, b = np.histogram(im[bh:-bh, bw:-bw, :].flatten(), bins=np.arange(2 ** params.BPS))
     th = threshold * np.max(h)
     lower_bound = np.argmax(h[1:] > th) + 1
     upper_bound = len(h) - 1 - np.argmax(h[::-1] > th)
@@ -26,7 +26,7 @@ def mid_level(im,
     return centre
 
 
-def create_splines(curves_directory, order=ORDER):
+def create_splines(curves_directory, order=params.ORDER):
     red = np.fromfile(os.path.join(curves_directory, "red.bin"))
     green = np.fromfile(os.path.join(curves_directory, "green.bin"))
     blue = np.fromfile(os.path.join(curves_directory, "blue.bin"))
@@ -48,7 +48,7 @@ def convert(im, tck_r, tck_g, tck_b, middle_level,
             green_correction=0,
             blue_correction=0,
             temperature_correction=None,
-            bits_per_sample=BPS):
+            bits_per_sample=params.BPS):
     max_level = 2 ** bits_per_sample - 1
     if middle_level is not None:
         c = middle_level * max_level
@@ -73,7 +73,7 @@ def convert(im, tck_r, tck_g, tck_b, middle_level,
     return dst_scaled.astype(DATA_TYPES[bits_per_sample]), c / max_level
 
 
-def read_raw(filename, bits_per_sample=BPS, flip=True):
+def read_raw(filename, bits_per_sample=params.BPS, flip=True, downsample=1):
     with rawpy.imread(filename) as raw:
         im = raw.postprocess(output_color=rawpy.ColorSpace.raw,
                              output_bps=bits_per_sample,
@@ -81,10 +81,13 @@ def read_raw(filename, bits_per_sample=BPS, flip=True):
                              no_auto_bright=True)
         if flip:
             im = im[:, ::-1, :]
+        if downsample > 1:
+            factor = 1.0/downsample
+            im = scipy.ndimage.zoom(im, (factor, factor, 1))
         return im
 
 
-def white_correction(temp, datafile=TEMPERATURE_CORRECTIONS):
+def white_correction(temp, datafile=params.TEMPERATURE_CORRECTIONS):
     if temp > 0.0:
         data = np.fromfile(datafile)
         n = len(data) // 4
@@ -106,14 +109,14 @@ def main():
     temperature = white_correction(args.temperature)
 
     if os.path.isfile(args.raw):
-        src = read_raw(args.raw, flip=args.flip)
+        src = read_raw(args.raw, flip=args.flip, downsample=args.downsample)
         positive, mid = convert(src, tck_red, tck_green, tck_blue,
                                 middle_level=args.mid_level,
                                 red_correction=args.red,
                                 green_correction=args.green,
                                 blue_correction=args.blue,
                                 temperature_correction=temperature)
-        print(f"mid level: {mid:.2f}")
+        print(f'"{args.output}"')
         iio.imwrite(args.output, positive)
     else:
         if os.path.isdir(args.raw) and os.path.isdir(args.output):
@@ -122,7 +125,7 @@ def main():
                 basename = os.path.basename(fn)
                 name, _ = os.path.splitext(basename)
 
-                src = read_raw(fn, flip=args.flip)
+                src = read_raw(fn, flip=args.flip, downsample=args.downsample)
                 positive, mid = convert(src, tck_red, tck_green, tck_blue,
                                         middle_level=args.mid_level,
                                         red_correction=args.red,
@@ -131,8 +134,7 @@ def main():
                                         temperature_correction=temperature)
                 output_fn = os.path.join(args.output, f"{name}.tiff")
                 iio.imwrite(output_fn, positive)
-
-                print(f"{name}.tiff \tmid level: {mid:.2f}")
+                print(f'"{name}.tiff"')
 
 
 if __name__ == "__main__":

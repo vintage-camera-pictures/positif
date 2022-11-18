@@ -8,7 +8,7 @@ version = "0.0.1"
 authors = [
     { name = "Roman", email = "roman@vintage-camera.pictures" },
 ]
-description = "Convert DSLR captured negative to a positive image"
+description = "Convert colour film negative digitised by DSLR to a positive image"
 readme = "README.md"
 requires-python = ">=3.11"
 classifiers = [
@@ -16,7 +16,7 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
 ]
-keywords = ["image align"]
+keywords = ["convert negatives film photography colour DSLR digitise"]
 dependencies = [
     "imageio>=2.22.4",
     "numpy>=1.23.4",

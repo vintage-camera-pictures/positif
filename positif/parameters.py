@@ -5,3 +5,8 @@ ORDER = 3
 BPS = 16
 
 TEMPERATURE_CORRECTIONS = "curves/temperature.bin"
+
+CURVES = {"Ektar": "./curves/ektar",
+          "Portra160": "./curves/portra160"}
+
+FILM_STOCKS = tuple(CURVES.keys())

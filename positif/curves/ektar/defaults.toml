@@ -2,7 +2,7 @@
 mid-level = "auto"
 
 [channels]
-red = 0.0
+red = 0.00
 green = 0.0
 blue = 0.0
 
@@ -10,4 +10,4 @@ blue = 0.0
 temperature = "auto"
 
 [orientation]
-flip = true
+flip = false
