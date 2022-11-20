@@ -26,4 +26,6 @@ MANIFEST
 venv/
 venv3.11/
 
+.idea/
+
 positif/results/
