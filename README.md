@@ -65,14 +65,35 @@ use the conversion parameters described below to improve the resulting image.
 
 ## Examples
 
-Here are a few examples of using `positif`. The first image is the negative, the second is processed with default parameters, and the third has the following adjustments applied: `--red=0.01 --green=-0.04`.
+Here are a few examples of using `positif`. The scene was shot on Kodak Ektar 100 developed at home using Tetenal Colortec C-41 kit. The first image is the negative, the second is the output of the script called with the default parameters.
 
-![Negative](examples/frame02-negative.jpg "negative") ![Default settings](examples/frame02-default.jpg "default") ![Corrected](examples/frame02-corrected.jpg "corrected")
+![Negative](examples/frame04-negative.jpg "negative") ![Default settings](examples/frame04-default.jpg "default")
 
-The scene was shot on Kodak Ektar 100. The film was processed at home using Tetenal Colortec C-41. The calibration curve for this film was derived using a different roll of Kodak Ektar 100 shot with a different film camera on a different day in a different location. The reference film was developed by a professional lab using Fuji chemistry and scanned on a Noritsu scanner.
+There is a strong green cast and the reds are somewhat missing. Calling `positif` with the `--red=0.01 --green=-0.04` parameters results in the image below, on the left. On the right is the same scene captured with a digital camera as a RAW file. No adjustments were made to the digital image except applying the camera white balance.
 
-This is the same scene captured with a digital camera.
+![Corrected](examples/frame04-corrected.jpg "corrected") ![Digital capture](examples/digital.jpg "digital capture")
+
+There is an obvious difference in the exposure between the image from the colour negative film and the direct digital capture. Apart from this, the corrected image is very close to the digital. More importantly, batch processing of the whole roll produces consistent output.
 
 ## How it works
 
+Red, Green and Blue transform curves are applied to the corresponding channels of the RAW image of the film negative captured by a digital camera. The curves look like shown in the plot below.
+
+![Curves](examples/ektar.jpg "film curves")
+
+The input and output levels are normalised pixel values, 1.0 corresponds to the maximum channel level, 255 (8 bit) or 65535 (16 bit).
+
+The transform curve can be determined by several methods. The most straightforward approach is to expose a roll of your favourite colour negative film and include several scenes with a wide dynamic range, like the one in the example. Have your film developed and scanned by a good professional lab. This is your reference. Digitise one or more frames from this roll using your digital camera and light source. You must use RAW image format. The transform curves for each channel can then be derived by comparing the lab scan (your reference) with the RAW image from your camera, pixel-by-pixel.
+
+In the example above, the calibration curves were determined using a different roll of Kodak Ektar 100 shot with a different film camera on a different day in a different location. The reference film was developed by a professional lab using Fuji chemistry and scanned on a Noritsu scanner. The green colour cast in the first converted image could be caused by the camera lens, processing chemistry and development, or the digitising setup.
+
 ## Tips for Digitising Negatives
+
+There are several simple rules that you need to follow when digitising your film negatives:
+
+- _Reduce flare._ Work in subdued light, use a lens hood and mask unused areas of your light source.
+- _Calibrate White Balance._ Set custom white balance on your camera to the colour of your film base. Ideally, your want to do it for each roll of film. As a minimum, set custom white balance for each film stock you shoot. The gaps between the frames should be neutral grey as in the example below:
+  ![Negative](examples/negative.jpg "white-balanced negative")
+  There is no need to include the film borders and the gaps in the shot.
+- _Use Manual Exposure._ Not strictly necessary, but more consistent results would be achieved if you use the same exposure settings for the whole roll. Use the aperture of around f11 and adjust the shutter speed such that the film base is around 1/3 of a stop below clipping (after the white balance has been applied). Check all three channels. Obviously, the film base is the brightest white in your negatives unless you choose to include perforations in your scans. If this is the case, you might want to decrease the shutter time accordingly to avoid clipping. Flare might be a problem especially with high-key images (dense negatives). Once you are happy with your exposure settings, fix them by switching to a manual exposure mode.
+- _Scan Film Emulsion Side to the Lens_. It might not affect the final result, but simplifies your workflow.
