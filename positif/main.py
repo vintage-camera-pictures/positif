@@ -8,21 +8,24 @@ import numpy as np
 from positif.parser import parse_arguments
 import positif.parameters as params
 
+
 DATA_TYPES = {8: np.uint8, 16: np.uint16}
 
 
 def mid_level(im,
+              bin_width=params.HISTOGRAM_BIN_WIDTH,
               threshold=params.HISTOGRAM_THRESHOLD,
               border_h=params.HISTOGRAM_BORDER_HEIGHT,
               border_w=params.HISTOGRAM_BORDER_WIDTH):
     height, width, _ = im.shape
     bh = int(border_h * height)
     bw = int(border_w * width)
-    h, b = np.histogram(im[bh:-bh, bw:-bw, :].flatten(), bins=np.arange(2 ** params.BPS))
+    bins = np.arange(0, 2 ** params.BPS, bin_width)
+    h, b = np.histogram(im[bh:-bh, bw:-bw, :].flatten(), bins=bins)
     th = threshold * np.max(h)
     lower_bound = np.argmax(h[1:] > th) + 1
     upper_bound = len(h) - 1 - np.argmax(h[::-1] > th)
-    centre = 0.5 * (lower_bound + upper_bound)
+    centre = 0.5 * (lower_bound + upper_bound) * bin_width
     return centre
 
 
@@ -59,15 +62,24 @@ def convert(im, tck_r, tck_g, tck_b, middle_level,
     gc = c + green_correction * max_level
     bc = c + blue_correction * max_level
 
-    dst = np.empty_like(im, dtype=float)
-    dst[:, :, 0] = splev(im[:, :, 0].flatten() - rc, tck_r).reshape(im.shape[:2])
-    dst[:, :, 1] = splev(im[:, :, 1].flatten() - gc, tck_g).reshape(im.shape[:2])
-    dst[:, :, 2] = splev(im[:, :, 2].flatten() - bc, tck_b).reshape(im.shape[:2])
+    x = np.arange(max_level+1)
+    lut_red = splev(x - rc, tck_r, ext=3)
+    lut_green = splev(x - gc, tck_g, ext=3)
+    lut_blue = splev(x - bc, tck_b, ext=3)
 
     if temperature_correction is not None:
-        dst[:, :, 0] *= temperature_correction[0]
-        dst[:, :, 1] *= temperature_correction[1]
-        dst[:, :, 2] *= temperature_correction[2]
+        lut_red *= temperature_correction[0]
+        lut_green *= temperature_correction[1]
+        lut_blue *= temperature_correction[2]
+
+    dst = np.empty_like(im, dtype=float)
+    dst[:, :, 0] = lut_red[im[:, :, 0]]
+    dst[:, :, 1] = lut_green[im[:, :, 1]]
+    dst[:, :, 2] = lut_blue[im[:, :, 2]]
+
+    dst_max = np.max(dst)
+    if dst_max > 1.0:
+        dst = dst/dst_max
 
     dst_scaled = np.clip(dst * max_level, 0, max_level)
     return dst_scaled.astype(DATA_TYPES[bits_per_sample]), c / max_level
@@ -104,7 +116,6 @@ def white_correction(temp, datafile=params.TEMPERATURE_CORRECTIONS):
 
 def main():
     args = parse_arguments()
-
     tck_red, tck_green, tck_blue = create_splines(args.curves)
     temperature = white_correction(args.temperature)
 
@@ -116,9 +127,11 @@ def main():
                                 green_correction=args.green,
                                 blue_correction=args.blue,
                                 temperature_correction=temperature)
-        print(f'"{args.output}"')
+        print(f'"{args.output}"  {mid:.3f}')
         iio.imwrite(args.output, positive)
     else:
+        if not os.path.isdir(args.output):
+            os.mkdir(args.output)
         if os.path.isdir(args.raw) and os.path.isdir(args.output):
             raw_files = glob.glob(os.path.join(args.raw, f"*.{args.format}"))
             for fn in raw_files:
@@ -134,7 +147,7 @@ def main():
                                         temperature_correction=temperature)
                 output_fn = os.path.join(args.output, f"{name}.tiff")
                 iio.imwrite(output_fn, positive)
-                print(f'"{name}.tiff"')
+                print(f'"{name}.tiff"  {mid:.3f}')
 
 
 if __name__ == "__main__":

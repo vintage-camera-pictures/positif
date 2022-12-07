@@ -43,8 +43,9 @@ def existing_file_or_directory_type(arg):
     except ValueError:
         raise argparse.ArgumentTypeError("Must be a string containing a valid path to a file or directory")
 
-    if os.path.isdir(d) or os.path.isdir(os.path.dirname(d)):
-        return d
+    dd = os.path.abspath(d)
+    if os.path.isdir(dd) or os.path.isdir(os.path.dirname(dd)):
+        return dd
     else:
         raise argparse.ArgumentTypeError("Argument must be a valid path and the parent directory must exist")
 
