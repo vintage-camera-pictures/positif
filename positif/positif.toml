@@ -1,0 +1,5 @@
+[film-curves]
+Ektar = "./curves/ektar"
+Portra160 = "./curves/portra160"
+P = "C:\\Users\\User\\Projects\\film-curve\\filmcurve\\curves\\portra160"
+PL = "C:\\Users\\User\\Projects\\film-curve\\filmcurve\\curves\\portra160-linear"

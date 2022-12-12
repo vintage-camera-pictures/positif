@@ -2,7 +2,6 @@ import argparse
 import os
 from functools import partial
 import tomllib
-from positif.parameters import FILM_STOCKS, CURVES
 
 
 CHANNEL_LOWER = -0.5
@@ -50,7 +49,7 @@ def existing_file_or_directory_type(arg):
         raise argparse.ArgumentTypeError("Argument must be a valid path and the parent directory must exist")
 
 
-def parse_arguments():
+def parse_arguments(film_stocks, film_curves):
     parser = argparse.ArgumentParser(
         description="Convert digital camera capture of a film negative to a positive image using film-specific curves")
     parser.add_argument("--raw",
@@ -60,8 +59,8 @@ def parse_arguments():
 
     parser.add_argument("--film",
                         type=str,
-                        choices=FILM_STOCKS,
-                        help=f"colour negative film. Supported film stocks are: {FILM_STOCKS}",
+                        choices=film_stocks,
+                        help=f"colour negative film. Supported film stocks are: {film_stocks}",
                         required=True)
 
     parser.add_argument("--format",
@@ -123,6 +122,10 @@ def parse_arguments():
                         help="name of the output TIFF file or directory",
                         required=True)
 
+    parser.add_argument('--linear',
+                        help="(optional) film curves use linear gamma (1.0, 1.0). Disabled by default.",
+                        action='store_true')
+
     parser.add_argument('--flip',
                         help="(optional) flip the image horizontally. Disabled by default.",
                         action='store_true')
@@ -131,7 +134,7 @@ def parse_arguments():
     if os.path.isdir(a.raw) and a.format == "":
         print(f'Warning: file format must be specified (e.g. "ARW", "CR2", "NEF", etc.)')
 
-    a.curves = CURVES[a.film]    # append `curves` attribute to Arguments Namespace
+    a.curves = film_curves[a.film]    # append `curves` attribute to Arguments Namespace
     config_fn = os.path.join(a.curves, "defaults.toml")
     if os.path.isfile(config_fn):
         with open(config_fn, "rb") as f:
@@ -172,9 +175,14 @@ def parse_arguments():
         if not a.flip:
             if "orientation" in configuration and "flip" in configuration["orientation"]:
                 a.flip = configuration["orientation"]["flip"]
+    else:
+        if a.temperature is None:
+            a.temperature = 0.0
+        if a.red is None:
+            a.red = 0.0
+        if a.green is None:
+            a.green = 0.0
+        if a.blue is None:
+            a.blue = 0.0
+
     return a
-
-
-
-
-
