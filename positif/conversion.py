@@ -111,7 +111,7 @@ def white_correction(temp, datafile=params.TEMPERATURE_CORRECTIONS):
         bc_tck = splrep(corrections[:, 0], corrections[:, 3], k=1, s=0)
         rc = splev(temp, rc_tck, ext=3)
         gc = splev(temp, gc_tck, ext=3)
-        bc = splev(temp, bc_tck, ext=3)gi
+        bc = splev(temp, bc_tck, ext=3)
         return np.hstack((rc, gc, bc))
     return None
 
