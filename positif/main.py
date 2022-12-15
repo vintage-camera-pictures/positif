@@ -9,19 +9,24 @@ import positif.conversion as conv
 def main():
     film_stocks, film_curves = conv.read_config(params.CONFIG)
     args = parse_arguments(film_stocks=film_stocks, film_curves=film_curves)
-    tck_red, tck_green, tck_blue = conv.create_splines(args.curves)
     temperature = conv.white_correction(args.temperature)
 
     if os.path.isfile(args.raw):
-        src = conv.read_raw(args.raw, flip=args.flip, linear=args.linear, downsample=args.downsample)
-        positive, mid = conv.convert(src, tck_red, tck_green, tck_blue,
-                                     middle_level=args.mid_level,
-                                     red_correction=args.red,
-                                     green_correction=args.green,
-                                     blue_correction=args.blue,
-                                     temperature_correction=temperature)
-        if args.linear:
-            positive = conv.apply_gamma(positive)
+        src = conv.read_raw(args.raw,
+                            user_wb=args.user_white_balance,
+                            flip=args.flip,
+                            region=args.region,
+                            downsample=args.downsample)
+        positive, neg_range, curve_range = conv.convert(src,
+                                                        curve_file=args.curves,
+                                                        contrast_correction=args.contrast,
+                                                        red_correction=args.red,
+                                                        green_correction=args.green,
+                                                        blue_correction=args.blue,
+                                                        temperature_correction=temperature)
+
+        print(f"negative range: ({neg_range[0]:.2f}, {neg_range[1]:.2f})")
+        print(f"film curve range: ({curve_range[0]:.2f}, {curve_range[1]:.2f})")
 
         try:
             iio.imwrite(args.output, positive)
@@ -29,7 +34,7 @@ def main():
             print("The following error occurred when saving the output file: \n{str(e)}")
             exit(1)
 
-        print(f'"{args.output}"  {mid:.3f}')
+        print(f'"{args.output}"')
     else:
         if not os.path.isdir(args.output):
             os.mkdir(args.output)
@@ -39,23 +44,22 @@ def main():
                 basename = os.path.basename(fn)
                 name, _ = os.path.splitext(basename)
 
-                src = conv.read_raw(fn, flip=args.flip, linear=args.linear, downsample=args.downsample)
-                positive, mid = conv.convert(src, tck_red, tck_green, tck_blue,
-                                             middle_level=args.mid_level,
-                                             red_correction=args.red,
-                                             green_correction=args.green,
-                                             blue_correction=args.blue,
-                                             temperature_correction=temperature)
+                src = conv.read_raw(fn, flip=args.flip, downsample=args.downsample)
+                positive, neg_range, curve_range = conv.convert(src,
+                                                                curve_file=args.curves,
+                                                                contrast_correction=args.contrast,
+                                                                red_correction=args.red,
+                                                                green_correction=args.green,
+                                                                blue_correction=args.blue,
+                                                                temperature_correction=temperature)
                 output_fn = os.path.join(args.output, f"{name}.tiff")
-                if args.linear:
-                    positive = conv.apply_gamma(positive)
                 try:
                     iio.imwrite(output_fn, positive)
                 except OSError as e:
                     print("The following error occurred when saving the output file: \n{str(e)}")
                     exit(1)
 
-                print(f'"{name}.tiff"  {mid:.3f}')
+                print(f'"{output_fn}"')
 
 
 if __name__ == "__main__":

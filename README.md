@@ -4,7 +4,7 @@ Convert colour film negative digitised with DSLR to a positive image.
 
 ## Motivation
 
-Colour film negatives can be digitised by taking an image of the negative placed on a light box with a digital camera.
+Colour film negatives can be digitised with a digital camera by taking an image of the negative placed on a light box.
 Provided you have a camera with a proper lens, this technique is very inexpensive and fast compared to
 scanning the negatives by a dedicated film scanner or having them digitised by a photographic lab.
 The quality of the resulting digital capture is only limited by the specifications of your camera and lens.

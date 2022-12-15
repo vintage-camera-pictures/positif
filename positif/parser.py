@@ -10,6 +10,8 @@ MID_LEVEL_LOWER = 0.1
 MID_LEVEL_UPPER = 0.9
 TEMPERATURE_LOWER = 1000.0
 TEMPERATURE_UPPER = 40000.0
+CONTRAST_LOWER = -2
+CONTRAST_UPPER = 2
 
 
 def bound_float_type(arg, lower, upper):
@@ -77,12 +79,28 @@ def parse_arguments(film_stocks, film_curves):
                         default=1,
                         required=False)
 
-    bounded_mid_level = partial(bound_float_type, lower=MID_LEVEL_LOWER, upper=MID_LEVEL_UPPER)
-    parser.add_argument("--mid-level",
-                        type=bounded_mid_level,
-                        help=f"(optional) relative middle level, "
-                             f"from {MID_LEVEL_LOWER:.2f} to {MID_LEVEL_UPPER}. "
-                             "If not defined, it is calculated automatically",
+    parser.add_argument("--region",
+                        help="(optional) y0 x0 y1 x1 coordinates of the region to be extracted",
+                        type=int,
+                        nargs="+",
+                        required=False,
+                        default=None
+                        )
+
+    parser.add_argument("--user-white-balance",
+                        help="(optional) RGBG values of camera white balance point."
+                             " If not provided the camera white balance from the RAW file is used",
+                        type=float,
+                        nargs="+",
+                        required=False,
+                        default=None
+                        )
+
+    bounded_contrast = partial(bound_float_type, lower=CONTRAST_LOWER, upper=CONTRAST_UPPER)
+    parser.add_argument("--contrast",
+                        type=bounded_contrast,
+                        help="(optional) contrast correction in stops, "
+                             f"from {CONTRAST_LOWER:.2f} to {CONTRAST_UPPER:.2f}. Default is 0.",
                         default=None,
                         required=False)
 
@@ -117,22 +135,22 @@ def parse_arguments(film_stocks, film_curves):
                         default=None,
                         required=False)
 
+    parser.add_argument('--flip',
+                        help="(optional) flip the image horizontally. Disabled by default.",
+                        action='store_true')
+
     parser.add_argument("--output",
                         type=existing_file_or_directory_type,
                         help="name of the output TIFF file or directory",
                         required=True)
 
-    parser.add_argument('--linear',
-                        help="(optional) film curves use linear gamma (1.0, 1.0). Disabled by default.",
-                        action='store_true')
-
-    parser.add_argument('--flip',
-                        help="(optional) flip the image horizontally. Disabled by default.",
-                        action='store_true')
-
     a = parser.parse_args()
     if os.path.isdir(a.raw) and a.format == "":
         print(f'Warning: file format must be specified (e.g. "ARW", "CR2", "NEF", etc.)')
+
+    if a.user_white_balance is not None:
+        if not len(a.user_white_balance) == 4:
+            raise argparse.ArgumentTypeError("Camera white balance should contain 4 floating point values")
 
     a.curves = film_curves[a.film]    # append `curves` attribute to Arguments Namespace
     config_fn = os.path.join(a.curves, "defaults.toml")
@@ -140,12 +158,9 @@ def parse_arguments(film_stocks, film_curves):
         with open(config_fn, "rb") as f:
             configuration = tomllib.load(f)
 
-        if a.mid_level is None:
-            if "exposure" in configuration and "mid-level" in configuration["exposure"]:
-                value = configuration["exposure"]["mid-level"]
-                a.mid_level = None if value == "auto" else value
-            else:
-                a.mid_level = None
+        if a.contrast is None:
+            if "contrast" in configuration and "correction" in configuration["contrast"]:
+                a.contrast = configuration["contrast"]["correction"]
 
         if a.red is None:
             if "channels" in configuration and "red" in configuration["channels"]:
@@ -176,6 +191,8 @@ def parse_arguments(film_stocks, film_curves):
             if "orientation" in configuration and "flip" in configuration["orientation"]:
                 a.flip = configuration["orientation"]["flip"]
     else:
+        if a.contrast is None:
+            a.contrast = 0.0
         if a.temperature is None:
             a.temperature = 0.0
         if a.red is None:
